@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from "react";
 import type { AuditState, PrimaryUseCase, ToolSpend } from "@/types";
+import { runAudit } from "@/lib/auditEngine";
 import ResultsViewport from "./results";
+import LeadGateModal, { type LeadData } from "@/components/LeadGateModal";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -69,6 +71,10 @@ export default function Home() {
   const [auditData, setAuditData] = useState<AuditState>(DEFAULT_STATE);
   const [isLoaded, setIsLoaded] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  // Lead gate — opens after the user clicks "Run Free Audit"
+  const [isGateOpen, setIsGateOpen] = useState(false);
+  // Persisted share token returned by /api/audit/save
+  const [shareToken, setShareToken] = useState<string | null>(null);
 
   // Hydration-safe load from localStorage
   useEffect(() => {
@@ -118,13 +124,59 @@ export default function Home() {
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (auditData.tools.length === 0) return;
+    // Open the lead-gate modal instead of jumping straight to results.
+    // The modal's onSuccess callback will call the API and then reveal results.
+    setIsGateOpen(true);
+  }
+
+  /**
+   * Called by <LeadGateModal> after the user fills in their details.
+   * POSTs to /api/audit/save, stores the shareToken, then reveals results.
+   * Throwing here lets the modal's internal catch block surface the error.
+   */
+  async function handleLeadSuccess(leadData: LeadData): Promise<void> {
+    // Derive the same metrics the results view will display so the API
+    // receives a consistent, pre-computed snapshot.
+    const auditResult = runAudit(auditData);
+
+    const res = await fetch("/api/audit/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...leadData,
+        auditState: auditData,
+        metrics: {
+          totalCurrentSpend: auditResult.totalCurrentSpend,
+          totalMonthlySavings: auditResult.totalMonthlySavings,
+          totalAnnualSavings: auditResult.totalAnnualSavings,
+        },
+      }),
+    });
+
+    if (!res.ok) {
+      // Parse the error body if available, otherwise use the HTTP status text
+      let message = `Save failed (${res.status})`;
+      try {
+        const errBody = (await res.json()) as { error?: string };
+        if (errBody.error) message = errBody.error;
+      } catch {
+        // body was not JSON — keep the default message
+      }
+      throw new Error(message);
+    }
+
+    const { shareToken: token } = (await res.json()) as { shareToken: string };
+
+    // Persist token, close gate, reveal results
+    setShareToken(token);
+    setIsGateOpen(false);
     setShowResults(true);
-    // Scroll to top so the results hero is the first thing the user sees
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function handleStartOver() {
     setShowResults(false);
+    setShareToken(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -200,7 +252,7 @@ export default function Home() {
             </header>
 
             {/* Results component */}
-            <ResultsViewport auditData={auditData} />
+            <ResultsViewport auditData={auditData} shareToken={shareToken ?? undefined} />
           </div>
         ) : (
           <>
@@ -464,6 +516,13 @@ export default function Home() {
           </>
         )}
       </main>
+
+      {/* ── Lead Gate Modal ─────────────────────────────────────────────── */}
+      <LeadGateModal
+        isOpen={isGateOpen}
+        onClose={() => setIsGateOpen(false)}
+        onSuccess={handleLeadSuccess}
+      />
     </div>
   );
 }

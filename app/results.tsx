@@ -8,14 +8,17 @@ import {
   BadgeCheck,
   BarChart3,
   Bot,
+  Check,
   CheckCircle2,
   ChevronDown,
   ChevronRight,
   CircleDollarSign,
+  Clipboard,
   Cpu,
   ExternalLink,
   Layers,
   Lightbulb,
+  Link2,
   Minus,
   ShieldCheck,
   Sparkles,
@@ -31,6 +34,8 @@ import { runAudit, type AuditResult, type ToolAuditResult } from "@/lib/auditEng
 
 interface ResultsViewProps {
   auditData: AuditState;
+  /** Persisted share token from the DB — passed through for future share-link rendering. */
+  shareToken?: string;
 }
 
 type ActionBadge = "KEEP" | "DROP" | "DOWNGRADE" | "OPTIMIZE";
@@ -123,6 +128,140 @@ function AISummarySkeletonLoader() {
       <SkeletonBlock className="h-4 w-[88%]" />
       <SkeletonBlock className="h-4 w-[96%]" />
       <SkeletonBlock className="h-4 w-[72%]" />
+    </div>
+  );
+}
+
+// -- Share banner -------------------------------------------------------------
+
+function ShareBanner({ shareToken }: { shareToken: string }) {
+  const [isCopied, setIsCopied] = useState(false);
+
+  // Construct the full URL client-side so we never hard-code the domain.
+  // `window` is available here because this component only mounts inside
+  // ResultsViewport, which is rendered after hydration.
+  const shareUrl =
+    typeof window !== "undefined"
+      ? `${window.location.origin}/audit/${shareToken}`
+      : `/audit/${shareToken}`;
+
+  async function handleCopy() {
+    if (isCopied) return; // debounce rapid clicks
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setIsCopied(true);
+      setTimeout(() => setIsCopied(false), 2000);
+    } catch {
+      // Clipboard API unavailable (non-secure context / permission denied)
+      // Fall back to execCommand for legacy environments
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = shareUrl;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2000);
+      } catch {
+        // Both methods failed — silently swallow; the URL is still visible
+      }
+    }
+  }
+
+  return (
+    <div
+      id="share-banner"
+      className="relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-950/60 via-slate-900/70 to-violet-950/60 p-5 shadow-xl backdrop-blur-sm sm:p-6"
+    >
+      {/* Ambient glow blobs */}
+      <div className="pointer-events-none absolute -right-16 -top-16 h-40 w-40 rounded-full bg-indigo-600/10 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-violet-600/10 blur-3xl" />
+
+      {/* Top glow line */}
+      <div className="pointer-events-none absolute -top-px left-1/2 h-px w-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
+
+      <div className="relative flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Label + caption */}
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 ring-1 ring-indigo-500/25">
+            <Link2 size={16} className="text-indigo-400" strokeWidth={2} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-100">
+              Share Your Score
+            </p>
+            <p className="text-xs text-slate-500">
+              Anyone with this link can view your audit report
+            </p>
+          </div>
+        </div>
+
+        {/* URL pill + copy button */}
+        <div className="flex min-w-0 flex-1 items-center gap-2 sm:max-w-sm sm:justify-end">
+          {/* Read-only URL input */}
+          <div className="relative min-w-0 flex-1">
+            <input
+              id="share-url-input"
+              type="text"
+              readOnly
+              value={shareUrl}
+              aria-label="Shareable audit report URL"
+              onClick={(e) => (e.target as HTMLInputElement).select()}
+              className={[
+                "w-full rounded-xl border bg-slate-900/80 px-3 py-2.5",
+                "text-xs text-slate-400 outline-none",
+                "cursor-pointer truncate transition-colors duration-200",
+                "border-slate-700/80 focus:border-indigo-500/60 focus:ring-1 focus:ring-indigo-500/20",
+                "selection:bg-indigo-500/30",
+              ].join(" ")}
+            />
+          </div>
+
+          {/* Copy button */}
+          <button
+            id="copy-share-link-btn"
+            type="button"
+            onClick={handleCopy}
+            aria-label={isCopied ? "Link copied!" : "Copy share link"}
+            className={[
+              "flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2.5",
+              "text-xs font-semibold",
+              "border transition-all duration-200",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500/60",
+              "active:scale-95",
+              isCopied
+                ? "border-emerald-500/40 bg-emerald-500/15 text-emerald-400"
+                : "border-indigo-500/30 bg-indigo-500/10 text-indigo-300 hover:border-indigo-400/50 hover:bg-indigo-500/20 hover:text-indigo-200",
+            ].join(" ")}
+          >
+            {isCopied ? (
+              <>
+                <Check
+                  size={13}
+                  strokeWidth={2.5}
+                  className="shrink-0"
+                  aria-hidden="true"
+                />
+                <span>Copied!</span>
+              </>
+            ) : (
+              <>
+                <Clipboard
+                  size={13}
+                  strokeWidth={2}
+                  className="shrink-0"
+                  aria-hidden="true"
+                />
+                <span>Copy Link</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -606,7 +745,7 @@ function AIInsightsBlock({ result, auditData }: AIInsightsBlockProps) {
 
 // ─── Main Results Viewport ────────────────────────────────────────────────────
 
-export default function ResultsViewport({ auditData }: ResultsViewProps) {
+export default function ResultsViewport({ auditData, shareToken: _shareToken }: ResultsViewProps) {
   // Run audit synchronously — pure deterministic function, zero latency
   const result: AuditResult = useMemo(() => runAudit(auditData), [auditData]);
 
@@ -649,7 +788,10 @@ export default function ResultsViewport({ auditData }: ResultsViewProps) {
       {/* ── 1. Hero savings card ──────────────────────────────────────────── */}
       <SavingsHeroCard result={result} toolCount={auditData.tools.length} />
 
-      {/* ── 2. Credex CTA (conditional — monthly savings > $500) ─────────── */}
+      {/* ── 2. Share banner (only when a shareToken is present) ───────────── */}
+      {_shareToken && <ShareBanner shareToken={_shareToken} />}
+
+      {/* ── 3. Credex CTA (conditional — monthly savings > $500) ─────────── */}
       {hasHighSavings && (
         <CredexCTABanner
           monthlySavings={result.totalMonthlySavings}
@@ -657,7 +799,7 @@ export default function ResultsViewport({ auditData }: ResultsViewProps) {
         />
       )}
 
-      {/* ── 3. Per-tool audit matrix ──────────────────────────────────────── */}
+      {/* ── 4. Per-tool audit matrix ──────────────────────────────────────── */}
       <div
         id="tool-audit-matrix"
         className="rounded-3xl border border-slate-700/50 bg-slate-800/40 p-6 shadow-xl backdrop-blur-sm sm:p-8"
@@ -754,10 +896,10 @@ export default function ResultsViewport({ auditData }: ResultsViewProps) {
         )}
       </div>
 
-      {/* ── 4. AI Insights block ──────────────────────────────────────────── */}
+      {/* ── 5. AI Insights block ──────────────────────────────────────────── */}
       <AIInsightsBlock result={result} auditData={auditData} />
 
-      {/* ── 5. Share / export stub ───────────────────────────────────────── */}
+      {/* ── 6. Share / export stub ───────────────────────────────────────── */}
       <div className="flex items-center justify-center gap-3 pb-2">
         <button
           id="export-results-btn"
