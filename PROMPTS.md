@@ -150,3 +150,17 @@ This document tracks the system prompts and architectural directions fed to Clau
 > 4. Derive `teamSize` safely from `max(seats)` to prevent schema migration debt.
 > 5. Implement Open Graph (OG) metadata generation targeting high click-through rates.
 > 6. Reconstruct the `AuditState` and pass it directly into the `<ResultsViewport />`.
+
+## Day 6: Business Strategy & Documentation
+
+**Prompt 14: The Founder Docs (GTM, Economics, Metrics)**
+> Act as a fractional Chief Marketing Officer and Head of Product. I have built "AI Spend Auditor," a Next.js/Neon SaaS tool that connects to a user's AI stack, calculates redundancies (like Cursor vs. GitHub Copilot), and generates a personalized savings report. It captures leads via an email gate and uses a viral share-link loop.
+> 
+> I need you to generate the structural skeletons for four business strategy documents. 
+> 
+> 1. `GTM.md` (Go-To-Market): Define a 3-phase launch strategy (e.g., Product Hunt, Developer Influencer outreach, Engineering Bootcamps).
+> 2. `ECONOMICS.md` (Unit Economics): Draft a hypothetical breakdown of our CAC (Customer Acquisition Cost) via the viral loop vs paid ads, and the LTV (Lifetime Value) if we eventually take a 10% affiliate cut of the tools we recommend.
+> 3. `METRICS.md`: Identify the 3 "North Star" metrics we must track (e.g., Lead Gate Conversion Rate, Viral K-Factor, Tool Redundancy Hit Rate).
+> 4. `LANDING_COPY.md`: Write 3 variations of an aggressive, developer-focused H1 Header and Sub-headline for the landing page.
+> 
+> Output each document's content clearly separated by markdown headers. Use professional, startup-native terminology.
