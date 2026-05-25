@@ -15,11 +15,11 @@ import {
   CircleDollarSign,
   Clipboard,
   Cpu,
-  ExternalLink,
   Layers,
   Lightbulb,
   Link2,
   Minus,
+  Printer,
   ShieldCheck,
   Sparkles,
   TrendingDown,
@@ -899,14 +899,15 @@ export default function ResultsViewport({ auditData, shareToken: _shareToken }: 
       {/* ── 5. AI Insights block ──────────────────────────────────────────── */}
       <AIInsightsBlock result={result} auditData={auditData} />
 
-      {/* ── 6. Share / export stub ───────────────────────────────────────── */}
+      {/* ── 6. Export / print ────────────────────────────────────────────── */}
       <div className="flex items-center justify-center gap-3 pb-2">
         <button
           id="export-results-btn"
           type="button"
+          onClick={() => window.print()}
           className="flex items-center gap-2 rounded-xl border border-slate-700/60 bg-slate-800/60 px-4 py-2.5 text-xs font-medium text-slate-400 transition hover:border-slate-600 hover:text-slate-200 active:scale-95"
         >
-          <ExternalLink size={13} />
+          <Printer size={13} />
           Export Report
         </button>
         <span className="text-xs text-slate-700">·</span>
